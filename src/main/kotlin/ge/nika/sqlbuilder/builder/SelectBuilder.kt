@@ -1,54 +1,54 @@
-package ge.nika.sqlbuilder
+package ge.nika.sqlbuilder.builder
 
 import ge.nika.sqlbuilder.annotations.DatabaseTable
 import ge.nika.sqlbuilder.db.DbField
-import ge.nika.sqlbuilder.db.FunctionOverDbField
 import ge.nika.sqlbuilder.dialect.SqlDialect
-import ge.nika.sqlbuilder.dialect.SqlFunctionType
 import ge.nika.sqlbuilder.where.Where
 
-class SqlBuilder(
+class SelectBuilder(
+    private val fields: List<DbField>,
     private val dialect: SqlDialect,
 ) {
 
     private lateinit var from: String
-    private lateinit var fields: List<DbField>
     private var where: Where? = null
     private var limit: Int? = null
     private var offset: Int = 0
+    private var formatted: Boolean = false
 
-    fun select(vararg fields: DbField) {
-        this.fields = fields.toList()
-    }
-
-    fun from(table: Any) {
+    fun from(table: Any): SelectBuilder {
         from = getTableName(table)
+        return this
     }
 
-    fun limit(limit: Int) {
+    fun limit(limit: Int): SelectBuilder {
         this.limit = limit
+        return this
     }
 
-    fun offset(offset: Int) {
+    fun offset(offset: Int): SelectBuilder {
         this.offset = offset
+        return this
     }
 
-    fun paged(pageNumber: Int, pageSize: Int) {
+    fun paged(pageNumber: Int, pageSize: Int): SelectBuilder {
         check(pageNumber >= 1)
         check(pageSize >= 1)
 
         offset = pageSize * pageNumber
         limit = pageNumber
+        return this
     }
 
-    fun where(wh: Where) {
+    fun where(wh: Where): SelectBuilder {
         where = wh
+        return this
     }
 
-    fun max(field: DbField): DbField = FunctionOverDbField(
-        functionName = dialect.functionName(SqlFunctionType.MAX),
-        dbField = field,
-    )
+    fun formatted(isFormatted: Boolean): SelectBuilder {
+        formatted = isFormatted
+        return this
+    }
 
     fun build(): String {
         val fullFieldNames = fields
@@ -61,7 +61,21 @@ class SqlBuilder(
             ${ where?.let { "WHERE ${it.sql(dialect)}" } ?: "" }
             ${ limit?.let { "LIMIT $limit" } ?: "" }
             OFFSET $offset
-        """.trimIndent()
+        """.trimIndent().formatIfNecessary()
+    }
+
+    private fun String.formatIfNecessary(): String {
+        return if (!formatted) {
+            this
+        } else {
+            this
+                .replace("SELECT", "SELECT\n\t")
+                .replace("FROM", "FROM\n\t")
+                .replace("WHERE", "WHERE\n\t")
+                .replace("LIMIT", "LIMIT\n\t")
+                .replace("OFFSET", "OFFSET\n\t")
+                .replace(" AND ", " AND\n\t\t")
+        }
     }
 
     private fun getTableName(dbTable: Any): String {

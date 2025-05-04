@@ -1,5 +1,7 @@
 package ge.nika.sqlbuilder
 
+import ge.nika.sqlbuilder.builder.SelectBuilder
+import ge.nika.sqlbuilder.db.DbField
 import ge.nika.sqlbuilder.dialect.SqlDialect
 import ge.nika.sqlbuilder.dialect.SqlDialectType
 import ge.nika.sqlbuilder.functions.SqlFunctions
@@ -18,11 +20,12 @@ class Sql private constructor(
         )
     }
 
-    val functions: SqlFunctions = SqlFunctions(dialect)
+    val f: SqlFunctions = SqlFunctions(dialect)
 
-    fun buildSql(builderFun: SqlBuilder.() -> Unit): String {
-        val builder = SqlBuilder(dialect)
-        builder.builderFun()
-        return builder.build()
+    fun select(
+        vararg fields: DbField,
+    ): SelectBuilder {
+        val builder = SelectBuilder(fields.toList(), dialect)
+        return builder
     }
 }
